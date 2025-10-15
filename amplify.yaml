@@ -5,14 +5,15 @@ frontend:
       commands:
         - nvm install 18
         - nvm use 18
+        - corepack enable
         - npm ci
     build:
       commands:
-        - npm run build
+        - echo "✅ No web build for React Native - skipping"
   artifacts:
-    baseDirectory: build
+    baseDirectory: .
     files:
-      - '**/*'
+      - amplify_outputs.json
   cache:
     paths:
       - node_modules/**/*
