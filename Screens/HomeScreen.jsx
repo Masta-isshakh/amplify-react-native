@@ -1,175 +1,109 @@
-import {
-  Button,
-  Dimensions,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import React, { useState } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
-import TodoList from "../src/TodoList";
-import Carousel from "react-native-reanimated-carousel";
+import React, { useState, useEffect } from 'react';
+import { View, Button, TextInput, Image, FlatList, Text, StyleSheet, Alert, Platform, PermissionsAndroid } from 'react-native';
+import { launchImageLibrary } from 'react-native-image-picker';
+import { uploadData, downloadData } from 'aws-amplify/storage';
+import { Amplify } from 'aws-amplify';
+import outputs from '../amplify_outputs.json';
 
-const { width } = Dimensions.get("window");
+Amplify.configure(outputs);
 
-const images = [
-  "https://picsum.photos/id/1011/600/400",
-  "https://picsum.photos/id/1012/600/400",
-  "https://picsum.photos/id/1013/600/400",
-];
+export default function HomeScreen() {
+  const [description, setDescription] = useState('');
+  const [file, setFile] = useState(null);
+  const [items, setItems] = useState([]);  // tableau des images+desc
 
-const logo =
-  "https://www.qatarstalk.com/wp-content/uploads/2024/06/23Stop-n-Shop-Hypermarket-1024x512.webp";
-const avatar =
-  "https://tse2.mm.bing.net/th/id/OIP.E2lwe-_bLJWe3ohKGzh6sAHaHa?pid=Api&P=0&h=220";
+  const requestPermission = async () => {
+    if (Platform.OS === 'android') {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES ||
+        PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+        {
+          title: 'Permission accès images',
+          message: 'L’app a besoin d’accéder à vos images',
+          buttonPositive: 'OK',
+        }
+      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    }
+    return true;
+  };
 
-const categories = [
-  "food products",
-  "clothes",
-  "electronics & mobiles",
-  "home & living",
-  "others",
-];
+  const pickImage = async () => {
+    const ok = await requestPermission();
+    if (!ok) {
+      Alert.alert('Permission refusée');
+      return;
+    }
 
-const HomeScreen = () => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("food products");
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.headercontainer}>
-        <TouchableOpacity>
-          <Image source={{ uri: logo }} style={styles.logo} />
-        </TouchableOpacity>
-        <Text style={{ fontSize: 20, fontWeight: "bold" }}>Stop & Shop</Text>
-        <TouchableOpacity>
-          <Image source={{ uri: avatar }} style={styles.avatar} />
-        </TouchableOpacity>
-      </View>
+    launchImageLibrary({ mediaType: 'photo' }, (response) => {
+      if (response.didCancel) return;
+      if (response.errorCode) {
+        console.error('Picker error', response.errorMessage);
+        return;
+      }
+      const asset = response.assets[0];
+      setFile(asset);
+    });
+  };
 
-      <ScrollView>
-        <View>
-          <TextInput
-            placeholder="search item..."
-            placeholderTextColor="#a19898ff"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            style={styles.textinput}
-          />
-        </View>
+  const handleUpload = async () => {
+    if (!file || !description) {
+      Alert.alert('Veuillez choisir une image et entrer une description');
+      return;
+    }
+    try {
+      const res = await fetch(file.uri);
+      const blob = await res.blob();
+      const path = `uploads/${Date.now()}-${file.fileName || 'image.jpg'}`;
 
-        <View>
-          <Carousel
-            width={width}
-            height={150}
-            data={images}
-            autoPlay
-            scrollAnimationDuration={1000}
-            renderItem={({ item }) => (
-              <Image
-                source={{ uri: item }}
-                style={styles.imagecarousel}
-                resizeMethod="cover"
-              />
-            )}
-          />
-        </View>
+      const result = await uploadData({
+        path,
+        data: blob,
+        options: {
+          metadata: { description }
+        }
+      }).result;
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.categorycontainer}
-          contentContainerStyle={{ paddingHorizontal: 10 }}
-        >
-          {categories.map((category) => (
-            <TouchableOpacity
-              key={category}
-              style={[
-                styles.categorybutton,
-                selectedCategory === category && styles.categorybuttonactive,
-              ]}
-              onPress={() => setSelectedCategory(category)}
-            >
-              <Text
-                style={[
-                  styles.categorytext,
-                  selectedCategory === category && styles.categorytextactive,
-                ]}
-              >
-                {category}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </ScrollView>
-    </SafeAreaView>
+      // stockage local de l’item
+      setItems([ ...items, { description, uri: file.uri, key: result.key } ]);
+      Alert.alert('Succès', 'Image uploadée');
+      setFile(null);
+      setDescription('');
+    } catch (err) {
+      console.error('Erreur upload', err);
+      Alert.alert('Erreur', 'Echec upload');
+    }
+  };
+
+  const renderItem = ({ item }) => (
+    <View style={styles.item}>
+      <Image source={{ uri: item.uri }} style={styles.image} />
+      <Text>{item.description}</Text>
+    </View>
   );
-};
 
-export default HomeScreen;
+  return (
+    <View style={styles.container}>
+      <Button title="Choisir image" onPress={pickImage} />
+      <TextInput
+        placeholder="Entrez description"
+        value={description}
+        onChangeText={setDescription}
+        style={styles.input}
+      />
+      <Button title="Uploader" onPress={handleUpload} />
+      <FlatList
+        data={items}
+        keyExtractor={(i) => i.key}
+        renderItem={renderItem}
+      />
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 8,
-  },
-  headercontainer: {
-    display: "flex",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginHorizontal: 20,
-    marginTop: 10,
-  },
-  logo: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-  },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-  },
-  textinput: {
-    backgroundColor: "#e6e6e6ff",
-    marginHorizontal: 10,
-    marginTop: 10,
-    borderRadius: 5,
-    elevation: 5,
-    borderColor: "#7c7777ff",
-    borderWidth: 1,
-  },
-  imagecarousel: {
-    width: "95%",
-    height: "100%",
-    borderRadius: 5,
-    marginHorizontal: 3,
-    marginTop: 20,
-  },
-  categorycontainer:{
-    marginTop:10
-  },
-  categorybutton:{
-    paddingVertical:10,
-    paddingHorizontal:10,
-    backgroundColor:"#dbd6d6ff",
-    marginRight:10,
-    borderRadius:20,
-    elevation:2
-  },
-  categorybuttonactive:{
-    backgroundColor:"#9e9797ff"
-  },
-  categorytext:{
-    fontSize:14,
-    color:"#333"
-  },
-  categorytextactive:{
-    color:"#000",
-    fontWeight:"bold",
-  }
+  container: { flex: 1, padding: 16 },
+  input: { borderWidth:1, borderColor:'#ccc', padding:8, marginVertical:8 },
+  image: { width:100, height:100, borderRadius:8 },
+  item: { marginVertical:8, alignItems:'center' },
 });
