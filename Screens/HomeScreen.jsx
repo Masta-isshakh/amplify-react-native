@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, Button, Image, Alert, ActivityIndicator, ScrollView, Text } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { uploadData, list, getUrl } from 'aws-amplify/storage';
+import { Amplify } from 'aws-amplify';
+import outputs from '../amplify_outputs.json';
+
+Amplify.configure(outputs);
 
 export default function HomeScreen() {
   const [image, setImage] = useState(null);
@@ -105,7 +109,7 @@ export default function HomeScreen() {
           {uploading && <ActivityIndicator size="large" color="blue" />}
           {image && (
             <Image
-              source={{ uri: image.uri }}
+              source={{ uri: image?.uri }}
               style={{
                 width: 200,
                 height: 200,
