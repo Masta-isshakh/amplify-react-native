@@ -1,9 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { View, Button, Image, Alert, ActivityIndicator, ScrollView, Text } from 'react-native';
-import { launchImageLibrary } from 'react-native-image-picker';
-import { uploadData, list, getUrl } from 'aws-amplify/storage';
-import { Amplify } from 'aws-amplify';
-import outputs from '../amplify_outputs.json';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Button,
+  Image,
+  Alert,
+  ActivityIndicator,
+  ScrollView,
+  Text,
+} from "react-native";
+import { launchImageLibrary } from "react-native-image-picker";
+import { uploadData, list, getUrl } from "aws-amplify/storage";
+import { Amplify } from "aws-amplify";
+import outputs from "../amplify_outputs.json";
 
 Amplify.configure(outputs);
 
@@ -17,18 +25,18 @@ export default function HomeScreen() {
   const handleChooseImage = async () => {
     launchImageLibrary(
       {
-        mediaType: 'photo',
+        mediaType: "photo",
         includeBase64: false,
       },
       (response) => {
         if (response.didCancel) {
-          Alert.alert('Aucune image sélectionnée');
+          Alert.alert("Aucune image sélectionnée");
         } else if (response.errorCode) {
-          Alert.alert('Erreur :', response.errorMessage);
+          Alert.alert("Erreur :", response.errorMessage);
         } else {
           const selectedImage = response.assets[0];
           setImage(selectedImage);
-          console.log('Image sélectionnée :', selectedImage);
+          console.log("Image sélectionnée :", selectedImage);
         }
       }
     );
@@ -37,7 +45,7 @@ export default function HomeScreen() {
   // ☁️ Fonction pour uploader sur AWS Amplify Storage
   const handleUpload = async () => {
     if (!image) {
-      Alert.alert('Veuillez choisir une image avant d’uploader.');
+      Alert.alert("Veuillez choisir une image avant d’uploader.");
       return;
     }
 
@@ -52,14 +60,14 @@ export default function HomeScreen() {
         data: blob,
       }).result;
 
-      Alert.alert('Image uploadée avec succès !');
-      console.log('Résultat upload :', result);
+      Alert.alert("Image uploadée avec succès !");
+      console.log("Résultat upload :", result);
 
       // Recharge la liste après upload
       await fetchImages();
     } catch (error) {
-      console.error('Erreur upload :', error);
-      Alert.alert('Erreur lors de l’upload.');
+      console.error("Erreur upload :", error);
+      Alert.alert("Erreur lors de l’upload.");
     } finally {
       setUploading(false);
     }
@@ -71,23 +79,25 @@ export default function HomeScreen() {
       setLoadingList(true);
       // Récupère la liste des fichiers dans public/images/
       const listed = await list({
-        path: 'public/images/',
+        path: "public/images/",
         options: { listAll: true },
       });
 
       // Génère les URLs publiques pour affichage
-      const urls = await Promise.all(
-        listed.items.map(async (item) => {
-          const urlResult = await getUrl({ path: item.path });
-          return urlResult.url;
-        })
-      );
+const urls = await Promise.all(
+  listed.items.map(async (item) => {
+    const urlResult = await getUrl({ path: item.path });
+    console.log('URL S3 :', urlResult);
+    return urlResult.url; // assure-toi de bien retourner .url
+  })
+);
+
 
       setImagesList(urls);
-      console.log('Images récupérées :', urls);
+      console.log("Images récupérées :", urls);
     } catch (error) {
-      console.error('Erreur récupération images :', error);
-      Alert.alert('Impossible de charger les images.');
+      console.error("Erreur récupération images :", error);
+      Alert.alert("Impossible de charger les images.");
     } finally {
       setLoadingList(false);
     }
@@ -99,12 +109,18 @@ export default function HomeScreen() {
   }, []);
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: '#fff' }}>
-      <View style={{ marginTop: 60, alignItems: 'center' }}>
-        <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 10 }}>📸 Galerie publique</Text>
+    <ScrollView style={{ flex: 1, backgroundColor: "#fff" }}>
+      <View style={{ marginTop: 60, alignItems: "center" }}>
+        <Text style={{ fontSize: 22, fontWeight: "bold", marginBottom: 10 }}>
+          📸 Galerie publique
+        </Text>
         <Button title="Choisir une image" onPress={handleChooseImage} />
         <View style={{ height: 15 }} />
-        <Button title="Uploader sur AWS" onPress={handleUpload} disabled={uploading} />
+        <Button
+          title="Uploader sur AWS"
+          onPress={handleUpload}
+          disabled={uploading}
+        />
         <View style={{ marginTop: 15 }}>
           {uploading && <ActivityIndicator size="large" color="blue" />}
           {image && (
@@ -116,14 +132,14 @@ export default function HomeScreen() {
                 marginTop: 15,
                 borderRadius: 10,
                 borderWidth: 1,
-                borderColor: '#ccc',
+                borderColor: "#ccc",
               }}
             />
           )}
         </View>
 
-        <View style={{ marginTop: 40, width: '100%', paddingHorizontal: 10 }}>
-          <Text style={{ fontSize: 20, fontWeight: '600', marginBottom: 10 }}>
+        <View style={{ marginTop: 40, width: "100%", paddingHorizontal: 10 }}>
+          <Text style={{ fontSize: 20, fontWeight: "600", marginBottom: 10 }}>
             🖼️ Images publiées :
           </Text>
           {loadingList ? (
@@ -133,25 +149,34 @@ export default function HomeScreen() {
           ) : (
             <View
               style={{
-                flexDirection: 'row',
-                flexWrap: 'wrap',
-                justifyContent: 'space-around',
+                flexDirection: "row",
+                flexWrap: "wrap",
+                justifyContent: "space-around",
               }}
             >
-              {imagesList.map((uri, index) => (
-                <Image
-                  key={index}
-                  source={{ uri }}
-                  style={{
-                    width: 150,
-                    height: 150,
-                    marginBottom: 15,
-                    borderRadius: 10,
-                    borderWidth: 1,
-                    borderColor: '#ddd',
-                  }}
-                />
-              ))}
+              {imagesList.map((uri, index) => {
+                // Assure-toi que c’est bien une chaîne
+                const imageUri =
+                  typeof uri === "string" ? uri : uri?.toString();
+
+                return (
+                  <Image
+                    key={index}
+                    source={{ uri: imageUri }}
+                    style={{
+                      width: 150,
+                      height: 150,
+                      marginBottom: 15,
+                      borderRadius: 10,
+                      borderWidth: 1,
+                      borderColor: "#ddd",
+                    }}
+                    onError={(e) =>
+                      console.warn("Erreur image :", e.nativeEvent.error)
+                    }
+                  />
+                );
+              })}
             </View>
           )}
         </View>
