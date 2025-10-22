@@ -1,19 +1,18 @@
-import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
+import { a, defineData } from "@aws-amplify/backend";
 
 const schema = a.schema({
-  Todo: a
+  Product: a
     .model({
-      content: a.string(),
-      isDone: a.boolean()
+      name: a.string().required(),
+      price: a.float().required(),
+      imagePath: a.string().required(), // chemin du fichier S3
+      rating: a.float(), // optionnel
     })
-    .authorization(allow => [allow.owner()])
+    .authorization((allow) => [allow.publicApiKey()]), // tout le monde peut lire
 });
-
-export type Schema = ClientSchema<typeof schema>;
 
 export const data = defineData({
   schema,
-  authorizationModes: {
-    defaultAuthorizationMode: 'userPool'
-  }
 });
+
+export type Schema = typeof schema;

@@ -6,113 +6,84 @@ import {
   Image,
   Text,
   ActivityIndicator,
-  Button,
-  Alert,
   TouchableOpacity,
+  StyleSheet,
 } from "react-native";
-import { Storage } from "aws-amplify";
+import { getUrl } from "aws-amplify/storage";
+import { generateClient } from "aws-amplify/data";
+import { Schema } from "../amplify/data/resource";
 import { useFocusEffect } from "@react-navigation/native";
 
-export default function GalleryScreen({ navigation }) {
-  const [imagesList, setImagesList] = useState([]);
-  const [loadingList, setLoadingList] = useState(false);
+const client = generateClient();
 
-  const fetchImages = async () => {
+export default function GalleryScreen() {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchProducts = async () => {
     try {
-      setLoadingList(true);
-
-      // liste les fichiers dans le dossier 'images/' (niveau public)
-      const listed = await Storage.list("images/", { level: "public" });
-
-      // Storage.list retourne généralement des objets { key, eTag, size, ... }
-      // Pour chaque item on récupère l'URL publique via Storage.get
-      const urls = await Promise.all(
-        (listed || []).map(async (item) => {
-          // item.key est le chemin relatif (ex: "images/photo.jpg")
-          try {
-            const url = await Storage.get(item.key, { level: "public" });
-            // Storage.get retourne normalement une string (url)
-            return typeof url === "string" ? url : String(url);
-          } catch (e) {
-            console.warn("Erreur get URL pour", item.key, e);
-            return null;
-          }
+      setLoading(true);
+      const { data } = await client.models.Product.list();
+      const productsWithUrls = await Promise.all(
+        data.map(async (item) => {
+          const url = await getUrl({ path: item.imagePath });
+          return { ...item, imageUrl: url.url };
         })
       );
-
-      // filtre les valeurs invalides et garde uniquement les strings non vides
-      const filtered = urls.filter((u) => typeof u === "string" && u.length > 0);
-      setImagesList(filtered);
+      setProducts(productsWithUrls);
     } catch (error) {
-      console.error("Erreur récupération images :", error);
-      Alert.alert("Impossible de charger les images.");
+      console.error("Erreur récupération produits :", error);
     } finally {
-      setLoadingList(false);
+      setLoading(false);
     }
   };
 
-  // Rafraîchit chaque fois que cet écran reçoit le focus (retour depuis Upload par ex.)
-  useFocusEffect(
-    useCallback(() => {
-      fetchImages();
-    }, [])
-  );
+  useFocusEffect(useCallback(() => { fetchProducts(); }, []));
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: "#fff" }}>
-      <View style={{ marginTop: 24, alignItems: "center", paddingHorizontal: 12 }}>
-        <Text style={{ fontSize: 22, fontWeight: "bold", marginBottom: 10 }}>
-          🖼️ Galerie publique
-        </Text>
+    <ScrollView style={styles.container}>
+      <Text style={styles.title}>🖼️ Galerie de produits</Text>
 
-        <Button title="📤 Publier une image" onPress={() => navigation.navigate("Upload")} />
-        <View style={{ height: 18 }} />
-
-        {loadingList ? (
-          <ActivityIndicator size="large" />
-        ) : imagesList.length === 0 ? (
-          <Text>Aucune image publiée pour le moment.</Text>
-        ) : (
-          <View
-            style={{
-              flexDirection: "row",
-              flexWrap: "wrap",
-              justifyContent: "space-around",
-            }}
-          >
-            {imagesList.map((uri, index) => {
-              // sécurité : vérifie que uri est bien une string
-              if (typeof uri !== "string" || uri.length === 0) {
-                return (
-                  <View
-                    key={`invalid-${index}`}
-                    style={{ width: 150, height: 150, margin: 8, backgroundColor: "#eee", justifyContent: "center", alignItems: "center" }}
-                  >
-                    <Text>Invalid</Text>
-                  </View>
-                );
-              }
-
-              return (
-                <TouchableOpacity key={index} activeOpacity={0.8} onPress={() => {}}>
-                  <Image
-                    source={{ uri }}
-                    style={{
-                      width: 150,
-                      height: 150,
-                      margin: 8,
-                      borderRadius: 10,
-                      borderWidth: 1,
-                      borderColor: "#ddd",
-                    }}
-                    onError={(e) => console.warn("Image load error:", e.nativeEvent)}
-                  />
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-      </View>
+      {loading ? (
+        <ActivityIndicator size="large" color="gray" />
+      ) : products.length === 0 ? (
+        <Text>Aucun produit publié pour le moment.</Text>
+      ) : (
+        <View style={styles.grid}>
+          {products.map((prod, index) => (
+            <TouchableOpacity key={index} style={styles.card}>
+              <Image
+                source={{ uri: prod.imageUrl }}
+                style={styles.image}
+                onError={(e) => console.warn("Erreur image :", e.nativeEvent.error)}
+              />
+              <Text style={styles.name}>{prod.name}</Text>
+              <Text style={styles.price}>{prod.price.toFixed(2)} QAR</Text>
+              <Text style={styles.rating}>⭐ {prod.rating ?? 0}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#fff", padding: 10 },
+  title: { fontSize: 22, fontWeight: "bold", marginBottom: 20 },
+  grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-around" },
+  card: {
+    width: 160,
+    marginBottom: 20,
+    alignItems: "center",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    padding: 10,
+    backgroundColor: "#fafafa",
+  },
+  image: { width: 130, height: 130, borderRadius: 10 },
+  name: { fontSize: 16, fontWeight: "bold", marginTop: 5 },
+  price: { color: "green", fontSize: 14 },
+  rating: { color: "orange", fontSize: 12 },
+});

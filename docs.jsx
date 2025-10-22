@@ -26,7 +26,7 @@
 
 
 
-  
+
 
   const [loadingList, setLoadingList] = useState(false);
     // ☁️ Fonction pour uploader sur AWS Amplify Storage
@@ -59,3 +59,76 @@
         setUploading(false);
       }
     };
+
+
+
+
+
+
+     // 📥 Fonction pour lister toutes les images publiques
+      const fetchmages = async () => {
+        try {
+          setLoadingList(true);
+          // Récupère la liste des fichiers dans public/images/
+          const listed = await list({
+            path: "public/images/",
+            options: { listAll: true },
+          });
+    
+          // Génère les URLs publiques pour affichage
+          const urls = await Promise.all(
+            listed.items.map(async (item) => {
+              const urlResult = await getUrl({ path: item.path });
+              console.log("URL S3 :", urlResult);
+              return urlResult.url; // assure-toi de bien retourner .url
+            })
+          );
+    
+          setImagesList(urls);
+          console.log("Images récupérées :", urls);
+        } catch (error) {
+          console.error("Erreur récupération images :", error);
+          Alert.alert("Impossible de charger les images.");
+        } finally {
+          setLoadingList(false);
+        }
+      };
+    
+      // 🔁 Charger la liste au démarrage
+      useEffect(() => {
+        fetchImages();
+      }, []);
+
+
+
+
+
+
+
+     // Récupérer et afficher les images hébergées
+const fetchImages = async () => {
+  try {
+    setLoadingList(true);
+
+    const listed = await list({
+      path: "public/images/",
+      options: { listAll: true },
+    });
+
+    const urls = await Promise.all(
+      listed.items.map(async (item) => {
+        const urlResult = await getUrl({ path: item.path });
+        console.log("URL S3 :", urlResult);
+        return urlResult.url;
+      })
+    );
+
+    setImagesList(urls);
+    console.log("Images récupérées :", urls);
+  } catch (error) {
+    console.error("Erreur récupération images :", error);
+    Alert.alert("Impossible de charger les images.");
+  } finally {
+    setLoadingList(false);
+  }
+};
