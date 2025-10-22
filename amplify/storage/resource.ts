@@ -1,13 +1,12 @@
 import { defineStorage } from "@aws-amplify/backend";
 
 export const storage = defineStorage({
-  name: 'imageUploads',      // nom friendly pour le bucket
+  name: 'myProject',      // nom friendly pour le bucket
   access: (allow) => ({
-    'uploads/{user_id}/*': [
-      allow.authenticated.to(['read', 'write', 'delete']),
-    ],
-    'public/*': [
+
+    'menu/*': [
       allow.guest.to(['read']),
+      allow.authenticated.to(['read', 'write', 'delete']),
     ],
   }),
 });
