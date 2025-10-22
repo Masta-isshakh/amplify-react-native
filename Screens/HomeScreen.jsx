@@ -84,14 +84,13 @@ export default function HomeScreen() {
       });
 
       // Génère les URLs publiques pour affichage
-const urls = await Promise.all(
-  listed.items.map(async (item) => {
-    const urlResult = await getUrl({ path: item.path });
-    console.log('URL S3 :', urlResult);
-    return urlResult.url; // assure-toi de bien retourner .url
-  })
-);
-
+      const urls = await Promise.all(
+        listed.items.map(async (item) => {
+          const urlResult = await getUrl({ path: item.path });
+          console.log("URL S3 :", urlResult);
+          return urlResult.url; // assure-toi de bien retourner .url
+        })
+      );
 
       setImagesList(urls);
       console.log("Images récupérées :", urls);
