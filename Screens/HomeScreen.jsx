@@ -1,57 +1,55 @@
 import React, { useState } from 'react';
 import { View, Button, Image, Alert, ActivityIndicator } from 'react-native';
-import * as DocumentPicker from 'expo-document-picker';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { uploadData } from 'aws-amplify/storage';
 
 export default function HomeScreen() {
-  const [file, setFile] = useState(null);
+  const [image, setImage] = useState(null);
   const [uploading, setUploading] = useState(false);
 
-  // Fonction pour choisir un fichier (image, PDF, etc.)
-  const handleChooseFile = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: '*/*', // tu peux mettre "image/*" si tu veux seulement des images
-        copyToCacheDirectory: true,
-      });
-
-      if (result.canceled) {
-        Alert.alert('Aucun fichier choisi');
-        return;
+  // Fonction pour choisir une image dans la galerie
+  const handleChooseImage = async () => {
+    launchImageLibrary(
+      {
+        mediaType: 'photo',
+        includeBase64: false,
+      },
+      (response) => {
+        if (response.didCancel) {
+          Alert.alert('Aucune image sélectionnée');
+        } else if (response.errorCode) {
+          Alert.alert('Erreur :', response.errorMessage);
+        } else {
+          const selectedImage = response.assets[0];
+          setImage(selectedImage);
+          console.log('Image sélectionnée :', selectedImage);
+        }
       }
-
-      const selectedFile = result.assets[0];
-      setFile(selectedFile);
-      console.log('Fichier sélectionné :', selectedFile);
-    } catch (error) {
-      console.error('Erreur lors du choix du fichier:', error);
-      Alert.alert('Erreur lors du choix du fichier');
-    }
+    );
   };
 
-  // Fonction pour uploader le fichier sur AWS Amplify Storage
+  // Fonction pour uploader sur AWS S3 via Amplify Storage
   const handleUpload = async () => {
-    if (!file) {
-      Alert.alert('Veuillez choisir un fichier avant de télécharger.');
+    if (!image) {
+      Alert.alert('Veuillez choisir une image avant d’uploader.');
       return;
     }
 
     try {
       setUploading(true);
-
-      const response = await fetch(file.uri);
+      const response = await fetch(image.uri);
       const blob = await response.blob();
 
       const result = await uploadData({
-        path: `menu/${file.name}`,
+        path: `images/${image.fileName}`,
         data: blob,
       }).result;
 
-      Alert.alert('Fichier téléchargé avec succès !');
-      console.log('Résultat de l’upload :', result);
+      Alert.alert('Image uploadée avec succès !');
+      console.log('Résultat upload :', result);
     } catch (error) {
-      console.error('Erreur lors du téléchargement :', error);
-      Alert.alert('Erreur lors du téléchargement du fichier.');
+      console.error('Erreur upload :', error);
+      Alert.alert('Erreur lors de l’upload.');
     } finally {
       setUploading(false);
     }
@@ -59,15 +57,22 @@ export default function HomeScreen() {
 
   return (
     <View style={{ marginTop: 100, alignItems: 'center' }}>
-      <Button title="Choisir un fichier" onPress={handleChooseFile} />
+      <Button title="Choisir une image" onPress={handleChooseImage} />
       <View style={{ height: 20 }} />
       <Button title="Uploader sur AWS" onPress={handleUpload} disabled={uploading} />
       <View style={{ marginTop: 20 }}>
         {uploading && <ActivityIndicator size="large" color="blue" />}
-        {file && (
+        {image && (
           <Image
-            source={{ uri: file.uri }}
-            style={{ width: 150, height: 150, marginTop: 20, borderRadius: 10 }}
+            source={{ uri: image.uri }}
+            style={{
+              width: 200,
+              height: 200,
+              marginTop: 20,
+              borderRadius: 10,
+              borderWidth: 1,
+              borderColor: '#ccc',
+            }}
           />
         )}
       </View>
