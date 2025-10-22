@@ -1,3 +1,4 @@
+// screens/UploadScreen.js
 import React, { useState } from "react";
 import {
   View,
@@ -6,36 +7,35 @@ import {
   Alert,
   ActivityIndicator,
   Text,
-  TextInput,
-  StyleSheet,
 } from "react-native";
 import { launchImageLibrary } from "react-native-image-picker";
 import { uploadData } from "aws-amplify/storage";
-import { generateClient } from "aws-amplify/data"; // ✅ bon import
-
-const client = generateClient(); // ✅ sans <Schema>
 
 export default function UploadScreen({ navigation }) {
   const [image, setImage] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const [name, setName] = useState("");
-  const [price, setPrice] = useState("");
 
+  // 📷 Choisir une image
   const handleChooseImage = () => {
     launchImageLibrary(
       { mediaType: "photo", includeBase64: false },
       (response) => {
         if (response.didCancel) return;
-        if (response.errorCode)
-          return Alert.alert("Erreur", response.errorMessage || "Erreur inconnue");
-        if (response.assets?.length > 0) setImage(response.assets[0]);
+        if (response.errorCode) {
+          Alert.alert("Erreur", response.errorMessage || "Erreur inconnue");
+          return;
+        }
+        if (response.assets && response.assets.length > 0) {
+          setImage(response.assets[0]);
+        }
       }
     );
   };
 
+  // ☁️ Uploader sur S3 (dossier public/images)
   const handleUpload = async () => {
-    if (!image || !name || !price) {
-      Alert.alert("Champs requis", "Veuillez remplir tous les champs et choisir une image.");
+    if (!image?.uri) {
+      Alert.alert("Erreur", "Veuillez choisir une image avant d’uploader.");
       return;
     }
 
@@ -44,27 +44,15 @@ export default function UploadScreen({ navigation }) {
       const response = await fetch(image.uri);
       const blob = await response.blob();
       const fileName = image.fileName || `image_${Date.now()}.jpg`;
-      const path = `public/images/${fileName}`;
 
-      // Upload S3
       await uploadData({
-        path,
+        path: `public/images/${fileName}`,
         data: blob,
         options: { contentType: image.type || "image/jpeg" },
       }).result;
 
-      // Sauvegarde base
-      await client.models.Product.create({
-        name,
-        price: parseFloat(price),
-        imagePath: path,
-        rating: 0,
-      });
-
-      Alert.alert("✅ Produit ajouté avec succès !");
+      Alert.alert("✅ Image publiée avec succès !");
       setImage(null);
-      setName("");
-      setPrice("");
       navigation.navigate("Gallery");
     } catch (err) {
       console.error("Erreur upload :", err);
@@ -75,49 +63,37 @@ export default function UploadScreen({ navigation }) {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>🛍️ Ajouter un produit</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Nom du produit"
-        value={name}
-        onChangeText={setName}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Prix (ex: 99.99)"
-        keyboardType="numeric"
-        value={price}
-        onChangeText={setPrice}
-      />
+    <View style={{ marginTop: 60, alignItems: "center", paddingHorizontal: 20 }}>
+      <Text style={{ fontSize: 22, fontWeight: "bold", marginBottom: 10 }}>
+        📤 Publier une image
+      </Text>
 
       <Button title="Choisir une image" onPress={handleChooseImage} />
-      <View style={{ height: 10 }} />
-      <Button title="Publier" onPress={handleUpload} disabled={uploading} />
+      <View style={{ height: 18 }} />
+      <Button
+        title={uploading ? "Upload en cours..." : "Uploader"}
+        onPress={handleUpload}
+        disabled={uploading}
+      />
 
-      {uploading && <ActivityIndicator size="large" style={{ marginTop: 15 }} />}
-      {image && typeof image.uri === "string" && (
-        <Image source={{ uri: image.uri }} style={styles.preview} />
-      )}
+      <View style={{ marginTop: 18, alignItems: "center" }}>
+        {uploading && <ActivityIndicator size="large" />}
+        {image?.uri && (
+          <Image
+            source={{ uri: image.uri }}
+            style={{
+              width: 200,
+              height: 200,
+              marginTop: 12,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: "#ccc",
+            }}
+            resizeMode="cover"
+            onError={(e) => console.warn("Erreur preview :", e.nativeEvent)}
+          />
+        )}
+      </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { marginTop: 60, alignItems: "center", paddingHorizontal: 20 },
-  title: { fontSize: 22, fontWeight: "bold", marginBottom: 10 },
-  input: {
-    width: "90%",
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 10,
-  },
-  preview: {
-    width: 200,
-    height: 200,
-    marginTop: 12,
-    borderRadius: 8,
-  },
-});

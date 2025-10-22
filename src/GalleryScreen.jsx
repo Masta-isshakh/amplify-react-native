@@ -6,84 +6,91 @@ import {
   Image,
   Text,
   ActivityIndicator,
+  Alert,
   TouchableOpacity,
-  StyleSheet,
 } from "react-native";
-import { getUrl } from "aws-amplify/storage";
-import { generateClient } from "aws-amplify/data";
-import { Schema } from "../amplify/data/resource";
+import { list, getUrl } from "aws-amplify/storage";
 import { useFocusEffect } from "@react-navigation/native";
 
-const client = generateClient();
+export default function GalleryScreen({ navigation }) {
+  const [imagesList, setImagesList] = useState([]);
+  const [loadingList, setLoadingList] = useState(false);
 
-export default function GalleryScreen() {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  const fetchProducts = async () => {
+  // 🔄 Récupérer les images depuis S3
+  const fetchImages = async () => {
     try {
-      setLoading(true);
-      const { data } = await client.models.Product.list();
-      const productsWithUrls = await Promise.all(
-        data.map(async (item) => {
-          const url = await getUrl({ path: item.imagePath });
-          return { ...item, imageUrl: url.url };
+      setLoadingList(true);
+      const listed = await list({ path: "public/images/" });
+
+      // Vérifie que tu as bien "listed.items"
+      if (!listed?.items) {
+        throw new Error("Aucune image trouvée dans S3");
+      }
+
+      const urls = await Promise.all(
+        listed.items.map(async (item) => {
+          const { url } = await getUrl({ path: item.path });
+          return url;
         })
       );
-      setProducts(productsWithUrls);
+
+      setImagesList(urls);
     } catch (error) {
-      console.error("Erreur récupération produits :", error);
+      console.error("Erreur récupération images :", error);
+      Alert.alert("Erreur", "Impossible de charger les images.");
     } finally {
-      setLoading(false);
+      setLoadingList(false);
     }
   };
 
-  useFocusEffect(useCallback(() => { fetchProducts(); }, []));
+  // 🧭 Recharger la liste à chaque retour sur cet écran
+  useFocusEffect(
+    useCallback(() => {
+      fetchImages();
+    }, [])
+  );
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>🖼️ Galerie de produits</Text>
+    <ScrollView style={{ flex: 1, backgroundColor: "#fff" }}>
+      <View style={{ marginTop: 40, paddingHorizontal: 10 }}>
+        <Text style={{ fontSize: 22, fontWeight: "bold", marginBottom: 10 }}>
+          🖼️ Galerie publique
+        </Text>
 
-      {loading ? (
-        <ActivityIndicator size="large" color="gray" />
-      ) : products.length === 0 ? (
-        <Text>Aucun produit publié pour le moment.</Text>
-      ) : (
-        <View style={styles.grid}>
-          {products.map((prod, index) => (
-            <TouchableOpacity key={index} style={styles.card}>
-              <Image
-                source={{ uri: prod.imageUrl }}
-                style={styles.image}
-                onError={(e) => console.warn("Erreur image :", e.nativeEvent.error)}
-              />
-              <Text style={styles.name}>{prod.name}</Text>
-              <Text style={styles.price}>{prod.price.toFixed(2)} QAR</Text>
-              <Text style={styles.rating}>⭐ {prod.rating ?? 0}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
+        {loadingList ? (
+          <ActivityIndicator size="large" color="gray" />
+        ) : imagesList.length === 0 ? (
+          <Text>Aucune image publiée pour le moment.</Text>
+        ) : (
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              justifyContent: "space-around",
+            }}
+          >
+            {imagesList.map((uri, index) => (
+              <TouchableOpacity key={index} onPress={() => console.log(uri)}>
+                <Image
+                  source={{ uri }}
+                  style={{
+                    width: 150,
+                    height: 150,
+                    marginBottom: 15,
+                    borderRadius: 10,
+                    borderWidth: 1,
+                    borderColor: "#ddd",
+                  }}
+                  resizeMode="cover"
+                  onError={(e) =>
+                    console.warn("Erreur image :", e.nativeEvent.error)
+                  }
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </View>
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff", padding: 10 },
-  title: { fontSize: 22, fontWeight: "bold", marginBottom: 20 },
-  grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-around" },
-  card: {
-    width: 160,
-    marginBottom: 20,
-    alignItems: "center",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    padding: 10,
-    backgroundColor: "#fafafa",
-  },
-  image: { width: 130, height: 130, borderRadius: 10 },
-  name: { fontSize: 16, fontWeight: "bold", marginTop: 5 },
-  price: { color: "green", fontSize: 14 },
-  rating: { color: "orange", fontSize: 12 },
-});
