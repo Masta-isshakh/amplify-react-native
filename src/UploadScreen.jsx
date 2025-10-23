@@ -1,60 +1,66 @@
 // screens/UploadScreen.js
 import React, { useState } from "react";
-import { View, Button, Image, Alert, ActivityIndicator, Text } from "react-native";
+import {
+  View,
+  Button,
+  Image,
+  Alert,
+  ActivityIndicator,
+  Text,
+} from "react-native";
 import { launchImageLibrary } from "react-native-image-picker";
 import { uploadData } from "aws-amplify/storage";
-
 
 export default function UploadScreen({ navigation }) {
   const [image, setImage] = useState(null);
   const [uploading, setUploading] = useState(false);
 
+  // 📷 Choisir une image
   const handleChooseImage = () => {
     launchImageLibrary(
       { mediaType: "photo", includeBase64: false },
       (response) => {
-        if (response.didCancel) {
-          // utilisateur a annulé
-        } else if (response.errorCode) {
+        if (response.didCancel) return;
+        if (response.errorCode) {
           Alert.alert("Erreur", response.errorMessage || "Erreur inconnue");
-        } else if (response.assets && response.assets.length > 0) {
+          return;
+        }
+        if (response.assets && response.assets.length > 0) {
           setImage(response.assets[0]);
         }
       }
     );
   };
 
+  // ☁️ Uploader sur S3 (dossier public/images)
   const handleUpload = async () => {
-  if (!image || !image.uri) {
-    Alert.alert("Erreur", "Veuillez choisir une image avant d’uploader.");
-    return;
-  }
+    if (!image?.uri) {
+      Alert.alert("Erreur", "Veuillez choisir une image avant d’uploader.");
+      return;
+    }
 
-  try {
-    setUploading(true);
-    const response = await fetch(image.uri);
-    const blob = await response.blob();
+    try {
+      setUploading(true);
+      const response = await fetch(image.uri);
+      const blob = await response.blob();
+      const fileName = image.fileName || `image_${Date.now()}.jpg`;
 
-    const fileName = image.fileName || `image_${Date.now()}.jpg`;
+      await uploadData({
+        path: `public/images/${fileName}`,
+        data: blob,
+        options: { contentType: image.type || "image/jpeg" },
+      }).result;
 
-    // 📤 Upload dans le dossier public/images/
-    await uploadData({
-      path: `public/images/${fileName}`,
-      data: blob,
-      options: { contentType: image.type || "image/jpeg" },
-    }).result;
-
-    Alert.alert("✅ Image publiée avec succès !");
-    setImage(null);
-    navigation.navigate("Gallery");
-  } catch (err) {
-    console.error("Erreur upload :", err);
-    Alert.alert("Erreur lors de l’upload.");
-  } finally {
-    setUploading(false);
-  }
-};
-
+      Alert.alert("✅ Image publiée avec succès !");
+      setImage(null);
+      navigation.navigate("Gallery");
+    } catch (err) {
+      console.error("Erreur upload :", err);
+      Alert.alert("Erreur lors de l’upload.");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <View style={{ marginTop: 60, alignItems: "center", paddingHorizontal: 20 }}>
@@ -64,15 +70,27 @@ export default function UploadScreen({ navigation }) {
 
       <Button title="Choisir une image" onPress={handleChooseImage} />
       <View style={{ height: 18 }} />
-      <Button title="Uploader" onPress={handleUpload} disabled={uploading} />
+      <Button
+        title={uploading ? "Upload en cours..." : "Uploader"}
+        onPress={handleUpload}
+        disabled={uploading}
+      />
 
       <View style={{ marginTop: 18, alignItems: "center" }}>
         {uploading && <ActivityIndicator size="large" />}
-        {image && typeof image.uri === "string" && (
+        {image?.uri && (
           <Image
             source={{ uri: image.uri }}
-            style={{ width: 200, height: 200, marginTop: 12, borderRadius: 8 }}
-            onError={(e) => console.warn("Preview image error:", e.nativeEvent)}
+            style={{
+              width: 200,
+              height: 200,
+              marginTop: 12,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: "#ccc",
+            }}
+            resizeMode="cover"
+            onError={(e) => console.warn("Erreur preview :", e.nativeEvent)}
           />
         )}
       </View>
