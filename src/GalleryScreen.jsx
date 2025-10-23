@@ -13,6 +13,7 @@ import {
 import { list, getUrl } from "aws-amplify/storage";
 
 import { useFocusEffect } from "@react-navigation/native";
+import TodoList from "./TodoList";
 
 export default function GalleryScreen({ navigation }) {
   const [imagesList, setImagesList] = useState([]);
@@ -119,6 +120,7 @@ const fetchImages = async () => {
           </View>
         )}
       </View>
+      <TodoList/>
     </ScrollView>
   );
 }
