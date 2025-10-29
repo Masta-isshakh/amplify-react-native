@@ -1,81 +1,122 @@
-// screens/UploadScreen.js
 import React, { useState } from "react";
-import { View, Button, Image, Alert, ActivityIndicator, Text } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  Button,
+  Image,
+  ActivityIndicator,
+  ScrollView,
+  Alert,
+  StyleSheet,
+} from "react-native";
 import { launchImageLibrary } from "react-native-image-picker";
-import { uploadData } from "aws-amplify/storage";
+import { generateClient } from "aws-amplify/data";
+import { uploadData, getUrl } from "aws-amplify/storage";
+import { generateClient } from "aws-amplify/data";
+
+const client = generateClient();
 
 
-export default function UploadScreen({ navigation }) {
+export default function AdminScreen({ navigation }) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [price, setPrice] = useState("");
+  const [oldPrice, setOldPrice] = useState("");
+  const [rate, setRate] = useState("");
   const [image, setImage] = useState(null);
   const [uploading, setUploading] = useState(false);
 
-  const handleChooseImage = () => {
-    launchImageLibrary(
-      { mediaType: "photo", includeBase64: false },
-      (response) => {
-        if (response.didCancel) {
-          // utilisateur a annulé
-        } else if (response.errorCode) {
-          Alert.alert("Erreur", response.errorMessage || "Erreur inconnue");
-        } else if (response.assets && response.assets.length > 0) {
-          setImage(response.assets[0]);
-        }
+  const pickImage = () => {
+    launchImageLibrary({ mediaType: "photo" }, (response) => {
+      if (response.didCancel) return;
+      if (response.errorMessage) {
+        Alert.alert("Erreur", response.errorMessage);
+        return;
       }
-    );
+      setImage(response.assets[0]);
+    });
   };
 
-  const handleUpload = async () => {
-  if (!image || !image.uri) {
-    Alert.alert("Erreur", "Veuillez choisir une image avant d’uploader.");
-    return;
-  }
+  const handleAddProduct = async () => {
+    if (!name || !price) {
+      Alert.alert("Erreur", "Nom et prix sont obligatoires");
+      return;
+    }
+    if (!image) {
+      Alert.alert("Erreur", "Veuillez choisir une image");
+      return;
+    }
 
-  try {
     setUploading(true);
-    const response = await fetch(image.uri);
-    const blob = await response.blob();
+    try {
+      // 1️⃣ Upload image vers S3
+      const response = await fetch(image.uri);
+      const blob = await response.blob();
+      const key = `products/${Date.now()}-${image.fileName || "image.jpg"}`;
 
-    const fileName = image.fileName || `image_${Date.now()}.jpg`;
+      await uploadData({
+        key,
+        data: blob,
+        options: { contentType: image.type || "image/jpeg" },
+      }).result;
 
-    // 📤 Upload dans le dossier public/images/
-    await uploadData({
-      path: `public/images/${fileName}`,
-      data: blob,
-      options: { contentType: image.type || "image/jpeg" },
-    }).result;
+      // 2️⃣ Créer un produit dans la data
+      await client.models.Product.create({
+        name,
+        description,
+        price: parseFloat(price),
+        oldPrice: oldPrice ? parseFloat(oldPrice) : null,
+        rate: rate ? parseFloat(rate) : null,
+        imagePath: key,
+      });
 
-    Alert.alert("✅ Image publiée avec succès !");
-    setImage(null);
-    navigation.navigate("Gallery");
-  } catch (err) {
-    console.error("Erreur upload :", err);
-    Alert.alert("Erreur lors de l’upload.");
-  } finally {
-    setUploading(false);
-  }
-};
-
+      Alert.alert("Succès", "Produit ajouté !");
+      setName("");
+      setDescription("");
+      setPrice("");
+      setOldPrice("");
+      setRate("");
+      setImage(null);
+      navigation.navigate("Gallery");
+    } catch (err) {
+      console.error("Erreur:", err);
+      Alert.alert("Erreur", "Impossible d’ajouter le produit");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
-    <View style={{ marginTop: 60, alignItems: "center", paddingHorizontal: 20 }}>
-      <Text style={{ fontSize: 22, fontWeight: "bold", marginBottom: 10 }}>
-        📤 Publier une image
-      </Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.title}>Ajouter un produit</Text>
+      <TextInput style={styles.input} placeholder="Nom" value={name} onChangeText={setName} />
+      <TextInput style={styles.input} placeholder="Description" value={description} onChangeText={setDescription} />
+      <TextInput style={styles.input} placeholder="Prix" keyboardType="numeric" value={price} onChangeText={setPrice} />
+      <TextInput style={styles.input} placeholder="Ancien prix" keyboardType="numeric" value={oldPrice} onChangeText={setOldPrice} />
+      <TextInput style={styles.input} placeholder="Note (ex: 4.5)" keyboardType="numeric" value={rate} onChangeText={setRate} />
 
-      <Button title="Choisir une image" onPress={handleChooseImage} />
-      <View style={{ height: 18 }} />
-      <Button title="Uploader" onPress={handleUpload} disabled={uploading} />
+      <Button title="Choisir une image" onPress={pickImage} />
+      {image && <Image source={{ uri: image.uri }} style={styles.preview} />}
 
-      <View style={{ marginTop: 18, alignItems: "center" }}>
-        {uploading && <ActivityIndicator size="large" />}
-        {image && typeof image.uri === "string" && (
-          <Image
-            source={{ uri: image.uri }}
-            style={{ width: 200, height: 200, marginTop: 12, borderRadius: 8 }}
-            onError={(e) => console.warn("Preview image error:", e.nativeEvent)}
-          />
-        )}
-      </View>
-    </View>
+      {uploading ? (
+        <ActivityIndicator style={{ marginTop: 16 }} size="large" />
+      ) : (
+        <Button title="Ajouter le produit" onPress={handleAddProduct} />
+      )}
+    </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { padding: 20, backgroundColor: "#fff" },
+  title: { fontSize: 20, fontWeight: "700", marginBottom: 20 },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    marginBottom: 10,
+    padding: 10,
+  },
+  preview: { width: 200, height: 200, alignSelf: "center", marginVertical: 10 },
+});

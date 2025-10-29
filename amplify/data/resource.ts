@@ -1,24 +1,19 @@
-import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
-
-const schema = a.schema({
-  Todo: a
-    .model({
-      imagePath: a.string(),
-      productName: a.string(),
-      productPrice: a.float(),
-      productOldprice: a.float(),
-      rate: a.float(),
-      isDone: a.boolean()
-    })
-    .authorization(allow => [allow.publicApiKey()])
-});
-
-export type Schema = ClientSchema<typeof schema>;
+import { a, defineData } from "@aws-amplify/backend";
 
 export const data = defineData({
-  schema,
-  authorizationModes: {
-    defaultAuthorizationMode: 'apiKey',
-    apiKeyAuthorizationMode:{expiresInDays:30}
-  }
+  schema: a.schema({
+    Product: a
+      .model({
+        name: a.string().required(),
+        description: a.string(),
+        price: a.float(),
+        oldPrice: a.float(),
+        rate: a.float(),
+        imagePath: a.string(), // clé S3
+      })
+      .authorization((allow) => [
+        allow.publicApiKey().to(["read"]), // les utilisateurs publics peuvent lire
+        allow.authenticated().to(["read", "create", "update", "delete"]), // utilisateurs connectés
+      ]),
+  }),
 });
