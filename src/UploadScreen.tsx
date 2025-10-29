@@ -11,9 +11,11 @@ import {
   StyleSheet,
 } from "react-native";
 import { launchImageLibrary } from "react-native-image-picker";
-import { generateClient } from "aws-amplify/data";
 import { uploadData } from "aws-amplify/storage";
-import type { Schema } from "../amplify/data/resource";
+import { generateClient } from "aws-amplify/data";
+import type { Schema } from "../amplify/data/resource"; // 🔥 vérifie bien le chemin
+
+
 
 const client = generateClient<Schema>();
 
@@ -66,9 +68,9 @@ export default function UploadScreen({ navigation }: any) {
       await client.models.Product.create({
         name,
         description,
-        price,
-        oldPrice,
-        rate,
+        price: parseFloat(price),
+        oldPrice: oldPrice ? parseFloat(oldPrice) : undefined,
+        rate: rate ? parseFloat(rate) : undefined,
         imagePath: key,
       });
 
