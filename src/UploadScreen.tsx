@@ -66,9 +66,9 @@ export default function UploadScreen({ navigation }: any) {
       await client.models.Product.create({
         name,
         description,
-        price: parseFloat(price),
-        oldPrice: oldPrice ? parseFloat(oldPrice) : undefined,
-        rate: rate ? parseFloat(rate) : undefined,
+        price,
+        oldPrice,
+        rate,
         imagePath: key,
       });
 

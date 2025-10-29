@@ -1,17 +1,22 @@
-import { a } from "@aws-amplify/data-schema";
+import { a, defineData, type ClientSchema } from '@aws-amplify/backend';
 
 const schema = a.schema({
-  Product: a
-    .model({
-      name: a.string(),
-      description: a.string(),
-      price: a.float(),
-      oldPrice: a.float(),
-      rate: a.float(),
-      imagePath: a.string(),
+  Product: a.model({
+    name: a.string().required(),
+    description: a.string(),
+    price: a.float().required(),
+    oldPrice: a.float(),
+    rate: a.float(),
+    imagePath: a.string(),
     })
     .authorization((allow) => [allow.publicApiKey()]),
 });
+export type Schema = ClientSchema<typeof schema>;
 
-export type Schema = typeof schema;
-export const dataSchema = schema;
+export const data = defineData({
+  schema,
+  authorizationModes: {
+    defaultAuthorizationMode: 'apiKey',
+    apiKeyAuthorizationMode: { expiresInDays: 30 }
+  }
+});
