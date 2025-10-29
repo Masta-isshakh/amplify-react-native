@@ -44,8 +44,6 @@ const fetchImages = async () => {
     );
 
     // ⚙️ Filtrer les valeurs nulles pour éviter les "Invalid"
-    console.log("🧩 URLs récupérées :", urls);
-
     setImagesList(urls.filter(Boolean));
   } catch (error) {
     console.error("Erreur récupération images :", error);
@@ -54,6 +52,7 @@ const fetchImages = async () => {
     setLoadingList(false);
   }
 };
+
 
 
 
@@ -120,7 +119,7 @@ const fetchImages = async () => {
           </View>
         )}
       </View>
-      <TodoList/>
+      
     </ScrollView>
   );
 }
