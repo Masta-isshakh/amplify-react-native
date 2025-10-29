@@ -4,7 +4,7 @@ export const storage = defineStorage({
   name: 'myProject',      // nom friendly pour le bucket
   access: (allow) => ({
 
-    'menu/*': [
+    'products/*': [
       allow.guest.to(['read']),
       allow.authenticated.to(['read', 'write', 'delete']),
     ],

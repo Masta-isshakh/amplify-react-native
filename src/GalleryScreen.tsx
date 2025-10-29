@@ -2,7 +2,11 @@ import React, { useEffect, useState } from "react";
 import { View, Text, Image, ScrollView, ActivityIndicator, StyleSheet } from "react-native";
 import { generateClient } from "aws-amplify/data";
 import { getUrl } from "aws-amplify/storage";
-import { generateClient } from "aws-amplify/data";
+import { Amplify } from "aws-amplify";
+import outputs from "../amplify_outputs.json";
+
+Amplify.configure(outputs);
+
 
 const client = generateClient();
 

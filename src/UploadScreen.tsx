@@ -13,10 +13,8 @@ import {
 import { launchImageLibrary } from "react-native-image-picker";
 import { generateClient } from "aws-amplify/data";
 import { uploadData, getUrl } from "aws-amplify/storage";
-import { generateClient } from "aws-amplify/data";
-
-const client = generateClient();
-
+import type {Schema} from "../amplify/data/resource";
+const client = generateClient<Schema>();
 
 export default function AdminScreen({ navigation }) {
   const [name, setName] = useState("");
