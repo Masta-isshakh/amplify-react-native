@@ -1,21 +1,54 @@
 import React, { useEffect, useState } from "react";
 import {
   View,
+  TouchableOpacity,
   Text,
   Image,
   ScrollView,
   ActivityIndicator,
   StyleSheet,
+  Button,
 } from "react-native";
 import { generateClient } from "aws-amplify/data";
 import { getUrl } from "aws-amplify/storage";
 import type { Schema } from "../amplify/data/resource";
+import { getCurrentUser } from "aws-amplify/auth";
+import { useAuthenticator } from "@aws-amplify/ui-react-native";
 
 const client = generateClient<Schema>();
 
-export default function GalleryScreen() {
+
+const SignOutButton=()=>{
+    const {signOut}=useAuthenticator();
+
+    return (
+        <View style={styles.signoutbutton}>
+            <Button title="Sign Out" onPress={signOut}/>
+        </View>
+    );
+};
+
+
+export default function GalleryScreen({navigation}) {
   const [products, setProducts] = useState<Schema["Product"]["type"][]>([]);
   const [loading, setLoading] = useState(true);
+  const [isOwner, setIsOwner] = useState(false);
+
+  useEffect(()=>{
+    const checkUserRole = async()=>{
+        try{
+            const user=await getCurrentUser();
+            const role=user?.signInDetails?.loginId;
+
+            if (user?.signInDetails?.loginId === "mastaisshakh@gmail.com") {
+                setIsOwner(true);
+            }
+        }catch(err){
+            console.log("utilisateur non admin");
+        }
+    };
+    checkUserRole();
+  }, []);
 
   useEffect(() => {
     const sub = client.models.Product.observeQuery().subscribe({
@@ -42,9 +75,17 @@ export default function GalleryScreen() {
   if (loading) return <ActivityIndicator size="large" style={{ marginTop: 40 }} />;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    
+    <ScrollView>
+        <View style={styles.container}>
       {products.map((p) => (
-        <View key={p.id} style={styles.card}>
+        
+        <TouchableOpacity 
+        key={p.id} 
+        style={styles.card}
+        activeOpacity={0.7}
+        onPress={()=> navigation.navigate("ProductDetail", {product: p})}
+        >
           {p.imageUrl && (
             <Image source={{ uri: p.imageUrl }} style={styles.image} />
           )}
@@ -55,16 +96,41 @@ export default function GalleryScreen() {
             <Text style={styles.oldPrice}>{p.oldPrice} QAR</Text>
           )}
           {p.rate && <Text>⭐ {p.rate}</Text>}
-        </View>
+        </TouchableOpacity>
+        
       ))}
+    </View>
+      {/*bouton visible uniquement pour admin */}
+      {isOwner&& (
+        <Button
+            title="ajouter un produit"
+            onPress={()=> navigation.navigate("Upload")}
+        />
+      )}
+
+      <SignOutButton/>
     </ScrollView>
+
+    
+    
+    
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 10, backgroundColor: "#f5f5f5" },
+  container: { 
+    flexDirection:"row",
+    flexWrap:"wrap",
+    justifyContent:"space-between",
+    padding: 10, 
+    backgroundColor: "#f5f5f5" 
+},
   card: {
     backgroundColor: "#fff",
+    width: "48%",
+    shadowColor:"#000",
+    shadowOpacity:0.1,
+    shadowRadius:5,
     marginBottom: 10,
     borderRadius: 10,
     padding: 10,
@@ -72,10 +138,28 @@ const styles = StyleSheet.create({
   },
   image: {
     width: "100%",
-    height: 180,
+    height: 80,
     borderRadius: 10,
+    resizeMode: "contain",
   },
-  name: { fontSize: 18, fontWeight: "bold", marginTop: 6 },
-  price: { color: "green", fontWeight: "bold" },
-  oldPrice: { textDecorationLine: "line-through", color: "red" },
+  name: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginTop: 6,
+  },
+
+  price: {
+    color: "green",
+    fontWeight: "bold",
+  },
+
+  oldPrice: {
+    textDecorationLine: "line-through",
+    color: "red",
+  },
+      signoutbutton:{
+        alignItems:"center",
+        justifyContent:"center",
+        marginBottom:70
+    }
 });
