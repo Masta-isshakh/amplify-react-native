@@ -22,50 +22,50 @@ Amplify.configure(outputs); // ⚡ obligatoire avant tout usage d’Amplify
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-function TabNavigator(){
-  return(
-    <Tab.Navigator 
-    screenOptions={({route})=>({
-      headerShown:false,
-      tabBarShowLabel:true,
-      tabBarIcon:({color, size})=>{
-        let iconName;
+function TabNavigator() {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarShowLabel: true,
+        tabBarIcon: ({focused,  color, size }) => {
+          let iconName;
 
-        if (route.name === "Home") {
-          iconName="grid-outline";
-        } else if (route.name==="Profile"){
-          iconName="person-outline";
-        }else if (route.name==="More"){
-          iconName="menu-outline";
-        }else if(route.name==="Notification"){
-          iconName="notifications-outline";
-        }
-        return <Ionicons name={iconName} size={22} color={color}/>
-      },
+          if (route.name === "Home") {
+            iconName = focused ? "home" : "home-outline";
+          } else if (route.name === "Profile") {
+            iconName = focused? "person": "person-outline";
+          } else if (route.name === "More") {
+            iconName = focused? "menu": "menu-outline";
+          } else if (route.name === "Notification") {
+            iconName = focused?"notifications": "notifications-outline";
+          }
+          return <Ionicons name={iconName} size={22} color={color} />
+        },
 
-      tabBarActiveTintColor:"#007AFF",
-      tabBarInactiveTintColor:"gray",
-    })}
+        tabBarActiveTintColor: "#000",
+        tabBarInactiveTintColor: "#777",
+      })}
 
     >
       <Tab.Screen name="Home" component={GalleryScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen}/>
-      <Tab.Screen name="More" component={MoreScreen}/>
-      <Tab.Screen name="Notification" component={NotificationScreen}/>
+      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="More" component={MoreScreen} />
+      <Tab.Screen name="Notification" component={NotificationScreen} />
     </Tab.Navigator>
   );
 }
 
-function MainStack(){
+function MainStack() {
   return (
     <Stack.Navigator>
       {/*les tabs comme ecran principal */}
-      <Stack.Screen name="Home" component={TabNavigator} options={{headerShown:false}}/>
-      <Stack.Screen name="Gallery" component={GalleryScreen}/>
-      <Stack.Screen name="Upload" component={UploadScreen}/>
-      <Stack.Screen name="ProductDetail" component={ProductDetail}/>
+      <Stack.Screen name="Home" component={TabNavigator} options={{ headerShown: false }} />
+      <Stack.Screen name="Gallery" component={GalleryScreen} />
+      <Stack.Screen name="Upload" component={UploadScreen} />
+      <Stack.Screen name="ProductDetail" component={ProductDetail} />
     </Stack.Navigator>
-      
+
 
   );
 }
@@ -74,10 +74,10 @@ export default function App() {
   return (
     <Authenticator.Provider>
       <Authenticator>
-    <NavigationContainer>
-      <MainStack/>
-    </NavigationContainer>
-    </Authenticator>
+        <NavigationContainer>
+          <MainStack />
+        </NavigationContainer>
+      </Authenticator>
     </Authenticator.Provider>
   );
 }

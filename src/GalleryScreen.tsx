@@ -8,14 +8,27 @@ import {
   ActivityIndicator,
   StyleSheet,
   Button,
+  TextInput,
+  Dimensions
 } from "react-native";
+import Carousel from "react-native-reanimated-carousel";
 import { generateClient } from "aws-amplify/data";
 import { getUrl } from "aws-amplify/storage";
 import type { Schema } from "../amplify/data/resource";
 import { getCurrentUser } from "aws-amplify/auth";
 import { useAuthenticator } from "@aws-amplify/ui-react-native";
 
+
 const client = generateClient<Schema>();
+
+const {width: screenWidth} =  Dimensions.get("window");
+
+const carouselImages =[
+  "https://images.pexels.com/photos/674010/pexels-photo-674010.jpeg",
+  "https://images.pexels.com/photos/1133957/pexels-photo-1133957.jpeg",
+"https://images.pexels.com/photos/206359/pexels-photo-206359.jpeg",
+"https://images.pexels.com/photos/906150/pexels-photo-906150.jpeg"
+]
 
 
 const SignOutButton=()=>{
@@ -33,6 +46,8 @@ export default function GalleryScreen({navigation}) {
   const [products, setProducts] = useState<Schema["Product"]["type"][]>([]);
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
+  const [search, setSearch]=useState("");
+  const [filteredProducts , setFilteredProducts]=useState([]);
 
   useEffect(()=>{
     const checkUserRole = async()=>{
@@ -64,6 +79,7 @@ export default function GalleryScreen({navigation}) {
           })
         );
         setProducts(withUrls);
+        setFilteredProducts(withUrls);
         setLoading(false);
       },
       error: (err) => console.error("Erreur observeQuery:", err),
@@ -72,13 +88,55 @@ export default function GalleryScreen({navigation}) {
     return () => sub.unsubscribe();
   }, []);
 
+  const handleSearch = (text) =>{
+    setSearch(text);
+
+    const filtered = products.filter((item)=>
+      item.name.toLocaleLowerCase().includes(text.toLowerCase()));
+    setFilteredProducts(filtered);
+  };
+
   if (loading) return <ActivityIndicator size="large" style={{ marginTop: 40 }} />;
 
   return (
     
     <ScrollView>
+      <View style={styles.searchcontainer}>
+        <TouchableOpacity>
+          <Image
+          source={require("../assets/logo.jpeg")}
+          style={styles.imagehead}
+        />
+        </TouchableOpacity>
+        
+        <TextInput
+          placeholder="search products...."
+          value={search}
+          onChangeText={handleSearch}
+          style={styles.searchinput}
+        />
+        <TouchableOpacity>
+          <Image
+          source={require("../assets/logo.jpeg")}
+          style={styles.imagehead}
+        />
+        </TouchableOpacity>
+        
+      </View>
+      <View style={styles.carouselContainer}>
+        <Carousel
+          width={screenWidth - 20}
+          height={180}
+          autoPlay={true}
+          data={carouselImages}
+          scrollAnimationDuration={1200}
+          renderItem={({item})=>(
+            <Image source={{uri:item}} style={styles.carouselimages}/>
+          )}
+        />
+      </View>
         <View style={styles.container}>
-      {products.map((p) => (
+      {filteredProducts.map((p) => (
         
         <TouchableOpacity 
         key={p.id} 
@@ -119,12 +177,49 @@ export default function GalleryScreen({navigation}) {
 
 const styles = StyleSheet.create({
   container: { 
+
     flexDirection:"row",
     flexWrap:"wrap",
     justifyContent:"space-between",
     padding: 10, 
     backgroundColor: "#f5f5f5" 
 },
+  carouselContainer: {
+    alignItems: "center",
+    justifyContent:"center",
+    marginTop: 15,
+  },
+imagehead:{
+  width:50,
+  height:50,
+  borderRadius:25
+},
+carouselimages:{
+  width: "98%",
+  alignItems:"center",
+  justifyContent:"center",
+  height: 180,
+  borderRadius:15,
+  padding:5
+},
+  searchcontainer: {
+    paddingHorizontal: 10,
+    marginTop: 50,
+    marginBottom: 5,
+    flexDirection:"row",
+    justifyContent:"space-between",
+    alignItems:"center",
+
+  },
+  searchinput: {
+    backgroundColor: "#fff",
+    padding: 7,
+    borderRadius: 10,
+    fontSize: 13,
+    elevation: 2,
+    width:"70%",
+    height:40
+  },
   card: {
     backgroundColor: "#fff",
     width: "48%",
