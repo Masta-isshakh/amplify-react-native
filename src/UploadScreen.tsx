@@ -11,6 +11,7 @@ const client = generateClient<Schema>();
 export default function UploadScreen({navigation}:any){
   const [name, setName]=useState("");
   const [description, setDescription]=useState("");
+  const [category, setCategory]=useState("");
   const [price, setPrice]=useState("");
   const [oldPrice, setOldPrice]=useState("");
   const [rate, setRate]=useState("");
@@ -55,6 +56,7 @@ export default function UploadScreen({navigation}:any){
     await client.models.Product.create({
       name,
       description,
+      category,
       price:parseFloat(price),
       oldPrice:oldPrice ? parseFloat(oldPrice): undefined,
       rate:rate ? parseFloat(rate): undefined,
@@ -93,6 +95,13 @@ return(
         placeholder="description"
         value={description}
         onChangeText={setDescription}
+      />
+
+      <TextInput
+        style={styles.input}
+        placeholder="categorie"
+        value={category}
+        onChangeText={setCategory}
       />
 
       <TextInput

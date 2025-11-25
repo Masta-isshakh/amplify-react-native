@@ -5,10 +5,12 @@ const schema = a.schema({
     .model({
       name: a.string().required(),
       description: a.string(),
+      category: a.string(),
       price: a.float().required(),
       oldPrice: a.float(),
       rate: a.float(),
       imagePath: a.string(),
+      
     })
     .authorization((allow) => [allow.publicApiKey()]),
 });
