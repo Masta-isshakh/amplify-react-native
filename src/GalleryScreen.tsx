@@ -80,11 +80,14 @@ export default function GalleryScreen({ navigation }) {
             }
           })
         );
+        console.log("PRODUCTS:", withUrls);
+
         setProducts(withUrls);
         setFilteredProducts(withUrls);
 
         const cats = withUrls.map((p) => p.category).filter((c) => c && c.trim() !== "").filter((value, index, self) => self.indexOf(value) === index);
         setCategories(["All", ...cats]);
+        console.log("CATEGORIES TROUVÉES :", cats);
         setLoading(false);
       },
       error: (err) => console.error("Erreur observeQuery:", err),
@@ -157,7 +160,7 @@ export default function GalleryScreen({ navigation }) {
         showsHorizontalScrollIndicator={false}
         style={styles.categoryScroll}
       >
-        {filteredProducts.map((cat) => (
+        {categories.map((cat) => (
           <TouchableOpacity
             key={cat}
             style={[

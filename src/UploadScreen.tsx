@@ -32,7 +32,7 @@ export default function UploadScreen({navigation}:any){
   };
 
   const handleAddProduct= async()=>{
-    if(!name || !price || !description || !oldPrice || !rate ){
+    if(!name || !price || !description || !category || !oldPrice || !rate ){
       Alert.alert("Please fill all fields");
       return;
   }
@@ -66,6 +66,7 @@ export default function UploadScreen({navigation}:any){
     Alert.alert("Product added successfully");
     setName("");
     setDescription("");
+    setCategory("");
     setPrice("");
     setOldPrice("");
     setRate("");
